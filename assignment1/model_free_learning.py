@@ -43,7 +43,7 @@ def learn_Q_QLearning(env, num_episodes=2000, gamma=0.95, lr=0.1, e=0.8, decay_r
     for _ in range(num_episodes):
         s = 0
         e = temp_e
-        while True:
+        for _ in range(400):
             if np.random.random() < e:
                 a = np.random.choice(list(env.P[s].keys()), 1)[0]
             else:
@@ -100,7 +100,7 @@ def learn_Q_SARSA(env, num_episodes=2000, gamma=0.95, lr=0.1, e=0.8, decay_rate=
             a = np.random.choice(list(env.P[s].keys()), 1)[0]
         else:
             a = np.argmax(Q[s])
-        while True:
+        for _ in range(400):
             r = np.random.random()
             for probability, nextstate, reward, terminal in env.P[s][a]:
                 if r <= probability:
@@ -152,14 +152,16 @@ def evaluate_q(env,Q):
     episode_reward = 0
     state = env.reset()
     done = False
-    while not done:
+    i=0
+    while not done and i<400:
         #env.render()
         action = np.argmax(Q[state])
         state, reward, done, _ = env.step(action)
         episode_reward += reward
+        i+=1
     return episode_reward
 
-def average_score(env,Q,time=100):
+def average_score(env,Q,time=1000):
     return np.mean([evaluate_q(env,Q) for _ in range(time)])
 
 def evaluate_type(env,num_episodes,type):
@@ -179,7 +181,7 @@ def evaluate_type(env,num_episodes,type):
 # Feel free to run your own debug code in main!
 def main():
     env = gym.make('Stochastic-4x4-FrozenLake-v0')
-    num_episodes=np.arange(1,2000,5)
+    num_episodes=np.arange(1,4000,10)
     q_out1=evaluate_type(env,num_episodes,'q-learning')
     q_out2=evaluate_type(env,num_episodes,'sarsa')
     import matplotlib.pyplot as plt

@@ -48,21 +48,13 @@ def value_iteration(P, nS, nA, gamma=0.9, max_iteration=200, tol=1e-3):
         V_next = np.zeros(nS, dtype=float)
         for s in range(nS):
             for a in range(nA):
-                r = np.random.random()
-                for probability, nextstate, reward, terminal in env.P[s][a]:
-                    if r <= probability:
-                        V_next[s] = np.max([V_next[s],(reward + gamma * V[nextstate])])
-                        break
-                    else:
-                        r -= probability
-        if convergence(V,V_next,tol):break
-        V=V_next
-
-    for s in range(nS):
-        for a in range(nA):
-            for probability, nextstate, reward, terminal in P[s][a]:
-                if V[nextstate]>V[policy[s]]:
-                    policy[s]=a
+                temp=0.
+                for probability, nextstate, reward, terminal in P[s][a]:
+                    temp += (reward + gamma * V[nextstate])*probability
+                V_next[s]=np.max([V_next[s],temp])
+        if convergence(V, V_next, tol): break
+        V = V_next
+    policy = policy_improvement(P, nS, nA, V, policy, gamma)
     ############################
     return V, policy
 
@@ -98,13 +90,8 @@ def policy_evaluation(P, nS, nA, policy, gamma=0.9, max_iteration=1000, tol=1e-3
     for i in range(max_iteration):
         V_next = np.zeros(nS, dtype='float')
         for s in range(nS):
-            r = np.random.random()
             for probability, nextstate, reward, terminal in env.P[s][policy[s]]:
-                if r <=probability:
-                    V_next[s]=reward+gamma*V[nextstate]
-                    break
-                else:
-                    r -= probability
+                V_next[s] += (reward + gamma * V[nextstate])*probability
         if convergence(V, V_next, tol):
             break
         V = V_next
@@ -145,14 +132,8 @@ def policy_improvement(P, nS, nA, value_from_policy, policy, gamma=0.9):
         Q = np.zeros(nA, dtype='float')
         q = -np.inf
         for a in range(nA):
-            temp = 0.
-            rewards = 0.
-            probabilities = 0.
-            for probability, nextstate, reward, terminal in P[s][policy[s]]:
-                temp += probability * value_from_policy[nextstate]
-                rewards += reward * probability
-                probabilities += probability
-            Q[a] = (rewards + gamma * temp) / probabilities
+            for probability, nextstate, reward, terminal in P[s][a]:
+                Q[a] += (reward + gamma * value_from_policy[nextstate])*probability
             if Q[a] > q:
                 q = Q[a]
                 policy_next[s] = a
@@ -198,11 +179,12 @@ def policy_iteration(P, nS, nA, gamma=0.9, max_iteration=20, tol=1e-3):
         policy[s] = random.choice(list(P[s].keys()))
 
     for i in range(max_iteration):
-        value_from_policy = policy_evaluation(P, nS, nA, policy, gamma)
-        policy_next = policy_improvement(P, nS, nA, value_from_policy, policy, gamma)
-        if convergence(policy, policy_next, tol):
+        policy_next = policy_improvement(P, nS, nA, V, policy, gamma)
+        value_from_policy = policy_evaluation(P, nS, nA, policy_next, gamma)
+        if convergence(V, value_from_policy, tol):
             break
         policy = policy_next
+        V=value_from_policy
     ############################
     return V, policy
 
@@ -288,7 +270,7 @@ def part4c():
 # Feel free to run your own debug code in main!
 # Play around with these hyperparameters.
 if __name__ == "__main__":
-    env = gym.make("Deterministic-4x4-FrozenLake-v0")
+    env = gym.make("Stochastic-4x4-FrozenLake-v0")
     print
     env.__doc__
     print
@@ -303,5 +285,5 @@ if __name__ == "__main__":
     print('  Optimal Value Function: %r' % V_vi)
     print('  Optimal Policy:         %r' % p_vi)
     print('\n##########\n##########\n\n')
-    #render_single(env, p_vi)
-    #part4c()
+    render_single(env, p_vi)
+    # part4c()
