@@ -48,14 +48,13 @@ def value_iteration(P, nS, nA, gamma=0.9, max_iteration=200, tol=1e-3):
         V_next = np.zeros(nS, dtype=float)
         for s in range(nS):
             for a in range(nA):
-                temp = 0.
-                rewards = 0.
-                probabilities = 0.
-                for probability, nextstate, reward, terminal in P[s][a]:
-                    temp += probability * V[nextstate]
-                    rewards += reward * probability
-                    probabilities += probability
-                V_next[s] =np.max([V_next[s],(rewards + gamma * temp) / probabilities])
+                r = np.random.random()
+                for probability, nextstate, reward, terminal in env.P[s][a]:
+                    if r <= probability:
+                        V_next[s] = np.max([V_next[s],(reward + gamma * V[nextstate])])
+                        break
+                    else:
+                        r -= probability
         if convergence(V,V_next,tol):break
         V=V_next
 
@@ -99,14 +98,13 @@ def policy_evaluation(P, nS, nA, policy, gamma=0.9, max_iteration=1000, tol=1e-3
     for i in range(max_iteration):
         V_next = np.zeros(nS, dtype='float')
         for s in range(nS):
-            temp = 0.
-            rewards = 0.
-            probabilities = 0.
-            for probability, nextstate, reward, terminal in P[s][policy[s]]:
-                temp += probability * V[nextstate]
-                rewards += reward * probability
-                probabilities += probability
-            V_next[s] = (rewards + gamma * temp) / probabilities
+            r = np.random.random()
+            for probability, nextstate, reward, terminal in env.P[s][policy[s]]:
+                if r <=probability:
+                    V_next[s]=reward+gamma*V[nextstate]
+                    break
+                else:
+                    r -= probability
         if convergence(V, V_next, tol):
             break
         V = V_next
@@ -305,5 +303,5 @@ if __name__ == "__main__":
     print('  Optimal Value Function: %r' % V_vi)
     print('  Optimal Policy:         %r' % p_vi)
     print('\n##########\n##########\n\n')
-    render_single(env, p_vi)
+    #render_single(env, p_vi)
     #part4c()
