@@ -5,6 +5,7 @@ import numpy as np
 import gym
 import time
 from lake_envs import *
+import random
 
 np.set_printoptions(precision=3)
 
@@ -13,7 +14,7 @@ def convergence(V, V_new, tol):
     return np.all(np.abs(V - V_new) < tol)
 
 
-def value_iteration(P, nS, nA, gamma=0.9, max_iteration=20, tol=1e-3):
+def value_iteration(P, nS, nA, gamma=0.9, max_iteration=200, tol=1e-3):
     """
     Learn value function and policy by using value iteration method for a given
     gamma and environment.
@@ -44,15 +45,25 @@ def value_iteration(P, nS, nA, gamma=0.9, max_iteration=20, tol=1e-3):
     # YOUR IMPLEMENTATION HERE #
 
     for i in range(max_iteration):
-        V_new = V.copy()
+        V_next = np.zeros(nS, dtype=float)
         for s in range(nS):
-            temp = np.zeros(nA)
             for a in range(nA):
-                probability, nextstate, reward, terminal = P[s][a]
-                probability = np.zeros(nS)
-                for s1 in range(nS):
-                    probability[s1] = probability
+                temp = 0.
+                rewards = 0.
+                probabilities = 0.
+                for probability, nextstate, reward, terminal in P[s][a]:
+                    temp += probability * V[nextstate]
+                    rewards += reward * probability
+                    probabilities += probability
+                V_next[s] =np.max([V_next[s],(rewards + gamma * temp) / probabilities])
+        if convergence(V,V_next,tol):break
+        V=V_next
 
+    for s in range(nS):
+        for a in range(nA):
+            for probability, nextstate, reward, terminal in P[s][a]:
+                if V[nextstate]>V[policy[s]]:
+                    policy[s]=a
     ############################
     return V, policy
 
@@ -134,14 +145,22 @@ def policy_improvement(P, nS, nA, value_from_policy, policy, gamma=0.9):
     policy_next = np.zeros(nS, dtype='int')
     for s in range(nS):
         Q = np.zeros(nA, dtype='float')
+        q = -np.inf
         for a in range(nA):
             temp = 0.
             rewards = 0.
+            probabilities = 0.
             for probability, nextstate, reward, terminal in P[s][policy[s]]:
                 temp += probability * value_from_policy[nextstate]
                 rewards += reward * probability
-            Q[a] = rewards + gamma * temp
-        policy_next[s] = np.argmax(Q)
+                probabilities += probability
+            Q[a] = (rewards + gamma * temp) / probabilities
+            if Q[a] > q:
+                q = Q[a]
+                policy_next[s] = a
+            elif Q[a] == q:
+                if random.random() < 0.5:
+                    policy_next[s] = a
     ############################
     return policy_next
 
@@ -176,7 +195,7 @@ def policy_iteration(P, nS, nA, gamma=0.9, max_iteration=20, tol=1e-3):
     policy = np.zeros(nS, dtype='int')
     ############################
     # YOUR IMPLEMENTATION HERE #
-    import random
+
     for s in range(nS):
         policy[s] = random.choice(list(P[s].keys()))
 
@@ -241,6 +260,33 @@ def render_single(env, policy):
     "Episode reward: %f" % episode_reward
 
 
+# Part 4c
+def part4c():
+    print('Part 4c\n--------')
+    env_names = ('Deterministic-4x4-FrozenLake-v0', 'Stochastic-4x4-FrozenLake-v0')
+    for env_name in env_names[1:]:
+        env = gym.make(env_name)
+        # print(env.__doc__)
+        # print("Here is an example of state, action, reward, and next state")
+        # example(env)
+        gamma = 0.8
+        # V_vi, p_vi = value_iteration(env.P, env.nS, env.nA, gamma=gamma, max_iteration=300, tol=1e-5)
+        V_pi, p_pi = policy_iteration(env.P, env.nS, env.nA, gamma=gamma, max_iteration=300, tol=1e-5)
+
+        print('Environment: "%s"' % env_name)
+        print('------------------------------')
+        print('Policy Iteration')
+        print('  Optimal Value Function: %r' % V_pi)
+        print('  Optimal Policy:         %r' % p_pi)
+        print('Value Iteration')
+        print('  Optimal Value Function: %r' % V_vi)
+        print('  Optimal Policy:         %r' % p_vi)
+        print('\n##########\n##########\n\n')
+        render_single(env, p_pi)
+        print('\n\n\n\n')
+        # render_single(env, p_vi)
+
+
 # Feel free to run your own debug code in main!
 # Play around with these hyperparameters.
 if __name__ == "__main__":
@@ -250,5 +296,14 @@ if __name__ == "__main__":
     print
     "Here is an example of state, action, reward, and next state"
     example(env)
-    # V_vi, p_vi = value_iteration(env.P, env.nS, env.nA, gamma=0.9, max_iteration=20, tol=1e-3)
+    V_vi, p_vi = value_iteration(env.P, env.nS, env.nA, gamma=0.9, max_iteration=20, tol=1e-3)
     V_pi, p_pi = policy_iteration(env.P, env.nS, env.nA, gamma=0.9, max_iteration=20, tol=1e-3)
+    print('Policy Iteration')
+    print('  Optimal Value Function: %r' % V_pi)
+    print('  Optimal Policy:         %r' % p_pi)
+    print('Value Iteration')
+    print('  Optimal Value Function: %r' % V_vi)
+    print('  Optimal Policy:         %r' % p_vi)
+    print('\n##########\n##########\n\n')
+    render_single(env, p_vi)
+    #part4c()

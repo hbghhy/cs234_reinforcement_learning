@@ -193,7 +193,7 @@ def render_single(env, policy):
     state, reward, done, _ = env.step(action)
     episode_reward += reward
 
-  print "Episode reward: %f" % episode_reward
+  print("Episode reward: %f" % episode_reward)
 
 # Feel free to run your own debug code in main!
 def main():
