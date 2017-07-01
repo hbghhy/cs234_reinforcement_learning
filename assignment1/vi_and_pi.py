@@ -285,5 +285,5 @@ if __name__ == "__main__":
     print('  Optimal Value Function: %r' % V_vi)
     print('  Optimal Policy:         %r' % p_vi)
     print('\n##########\n##########\n\n')
-    render_single(env, p_vi)
+    #render_single(env, p_vi)
     # part4c()

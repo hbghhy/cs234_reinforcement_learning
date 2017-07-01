@@ -13,6 +13,7 @@ class Linear(DQN):
     """
     Implement Fully Connected with Tensorflow
     """
+
     def add_placeholders_op(self):
         """
         Adds placeholders to the graph
@@ -54,12 +55,25 @@ class Linear(DQN):
         """
         ##############################################################
         ################YOUR CODE HERE (6-15 lines) ##################
+        img_height = state_shape[0]
+        img_width = state_shape[1]
 
-        pass
+        s_shape = (None, img_height, img_width, self.config.state_history)
+        a_shape = (None,)
+        r_shape = (None,)
+        sp_shape = (None, img_height, img_width, self.config.state_history)
+        done_mask_shape = (None,)
+        lr_shape = ()
+
+        self.s = tf.placeholder(tf.uint8, s_shape)
+        self.a = tf.placeholder(tf.int32, a_shape)
+        self.r = tf.placeholder(tf.float32, r_shape)
+        self.sp = tf.placeholder(tf.uint8, sp_shape)
+        self.done_mask = tf.placeholder(tf.bool, done_mask_shape)
+        self.lr = tf.placeholder(tf.float32, lr_shape)
 
         ##############################################################
         ######################## END YOUR CODE #######################
-
 
     def get_q_values_op(self, state, scope, reuse=False):
         """
@@ -76,7 +90,7 @@ class Linear(DQN):
         """
         # this information might be useful
         num_actions = self.env.action_space.n
-        out = state
+        # out = state
 
         ##############################################################
         """
@@ -94,15 +108,14 @@ class Linear(DQN):
               lasagne, cafe, etc.)
         """
         ##############################################################
-        ################ YOUR CODE HERE - 2-3 lines ################## 
-        
-        pass
+        ################ YOUR CODE HERE - 2-3 lines ##################
 
+        with tf.variable_scope(scope, reuse=reuse) as _:
+            flattened_state = tf.contrib.layers.flatten(state, scope)
+            out = layers.fully_connected(inputs=flattened_state, num_outputs=num_actions, activation_fn=None)
         ##############################################################
         ######################## END YOUR CODE #######################
-
         return out
-
 
     def add_update_target_op(self, q_scope, target_q_scope):
         """
@@ -142,12 +155,13 @@ class Linear(DQN):
         """
         ##############################################################
         ################### YOUR CODE HERE - 5-10 lines #############
-        
-        pass
 
+        target_q_variable = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=target_q_scope)
+        q_varialbe = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=q_scope)
+        tmp = [tf.assign(target_q_variable[i], q_varialbe[i]) for i in range(len(target_q_variable))]
+        self.update_target_op = tf.group(*tmp)
         ##############################################################
         ######################## END YOUR CODE #######################
-
 
     def add_loss_op(self, q, target_q):
         """
@@ -183,12 +197,14 @@ class Linear(DQN):
         """
         ##############################################################
         ##################### YOUR CODE HERE - 4-5 lines #############
-
-        pass
+        not_done = 1 - tf.cast(self.done_mask, tf.float32)
+        indices = tf.one_hot(self.a, num_actions)
+        q_samp = self.r + not_done * self.config.gamma * tf.reduce_max(target_q, axis=1)
+        q_sa = tf.reduce_sum(q * indices, axis=1)
+        self.loss = tf.reduce_mean((q_samp - q_sa) ** 2)
 
         ##############################################################
         ######################## END YOUR CODE #######################
-
 
     def add_optimizer_op(self, scope):
         """
@@ -221,23 +237,31 @@ class Linear(DQN):
         ##############################################################
         #################### YOUR CODE HERE - 8-12 lines #############
 
-        pass
-        
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
+        variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope)
+        gradients, v = list(zip(*optimizer.compute_gradients(self.loss, variables)))
+
+        if self.config.grad_clip:
+            gradients, _ = tf.clip_by_global_norm(gradients, self.config.clip_val)
+
+        # Use the clipped gradients for optimization
+        self.grad_norm = tf.global_norm(gradients)
+        self.train_op = optimizer.apply_gradients(list(zip(gradients, v)))
+
         ##############################################################
         ######################## END YOUR CODE #######################
-    
 
 
 if __name__ == '__main__':
     env = EnvTest((5, 5, 1))
 
     # exploration strategy
-    exp_schedule = LinearExploration(env, config.eps_begin, 
-            config.eps_end, config.eps_nsteps)
+    exp_schedule = LinearExploration(env, config.eps_begin,
+                                     config.eps_end, config.eps_nsteps)
 
     # learning rate schedule
-    lr_schedule  = LinearSchedule(config.lr_begin, config.lr_end,
-            config.lr_nsteps)
+    lr_schedule = LinearSchedule(config.lr_begin, config.lr_end,
+                                 config.lr_nsteps)
 
     # train model
     model = Linear(env, config)

@@ -31,7 +31,7 @@ class NatureQN(Linear):
         """
         # this information might be useful
         num_actions = self.env.action_space.n
-        out = state
+        #out = state
         ##############################################################
         """
         TODO: implement the computation of Q values like in the paper
@@ -54,8 +54,17 @@ class NatureQN(Linear):
         ##############################################################
         ################ YOUR CODE HERE - 10-15 lines ################ 
 
-        pass
-
+        with tf.variable_scope(scope, reuse=reuse) as _:
+            #flattened_state = tf.contrib.layers.flatten(state, scope)
+            conv1=layers.conv2d(inputs=state,num_outputs=32,
+                                  kernel_size=[8,8],stride=4)
+            conv2=layers.conv2d(inputs=conv1,num_outputs=64,
+                                  kernel_size=[4,4],stride=2)
+            conv3=layers.conv2d(inputs=conv2,num_outputs=64,
+                                  kernel_size=[3,3],stride=1)
+            flattened_conv = tf.contrib.layers.flatten(conv3, scope)
+            hidden=layers.fully_connected(inputs=flattened_conv,num_outputs=512)
+            out=layers.fully_connected(inputs=hidden,num_outputs=num_actions,activation_fn=None)
         ##############################################################
         ######################## END YOUR CODE #######################
         return out
